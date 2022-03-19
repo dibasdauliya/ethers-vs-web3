@@ -1,4 +1,4 @@
-# Basic Sample Hardhat Project
+# Ethers vs Web3
 
 Read article at: https://guideofdapp.com/posts/ethers-vs-web3
 
