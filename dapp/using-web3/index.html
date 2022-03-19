@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Using Web3</title>
+    <link rel="stylesheet" href="./../style.css" />
+  </head>
+  <body>
+    <div>
+      <button id="connect" onclick="connectWallet()">Connect</button>
+
+      <ul>
+        <li>Address: <span id="address"></span></li>
+        <li>Balance: Ξ <span id="balance"></span></li>
+      </ul>
+
+      <h2>Our special data from Contract</h2>
+
+      <fieldset>
+        <legend>Reading data from smart contract</legend>
+        <button onclick="fetchData()">Fetch Data</button>
+        <p>Greeting: <span id="response"></span></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Writing data to smart contract</legend>
+        <form id="form">
+          <label htmlFor="text"> <strong>Edit data</strong></label>
+          <input type="text" id="text" name="greet" required />
+          <button type="submit">Edit</button>
+        </form>
+      </fieldset>
+    </div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"
+      async
+    ></script>
+
+    <script>
+      const btnConnect = document.getElementById('connect'),
+        uiAddress = document.getElementById('address'),
+        uiBalance = document.getElementById('balance'),
+        response = document.getElementById('response'),
+        form = document.getElementById('form'),
+        submitBtn = document.querySelector('button[type]')
+
+      async function getABI() {
+        const data = await fetch('./../ABI/Greeter.json')
+        const { abi } = await data.json()
+        return abi
+      }
+
+      let userAddress
+      const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3' // we'll get it while deploying the smart contract
+
+      async function connectWallet() {
+        const web3 = new Web3(window.ethereum)
+        const [address] = await web3.eth.requestAccounts()
+
+        const balance = await web3.eth.getBalance(address)
+        const formattedBalance = await web3.utils.fromWei(balance, 'ether')
+
+        uiAddress.innerText = address
+        userAddress = address
+        uiBalance.innerText = formattedBalance
+        btnConnect.innerText = 'Connected'
+      }
+
+      async function fetchData() {
+        const web3 = new Web3(window.ethereum)
+        const abi = await getABI()
+
+        const contract = new web3.eth.Contract(abi, contractAddress)
+
+        const res = await contract.methods.greeting().call()
+        response.innerText = res
+      }
+
+      form.addEventListener('submit', async (e) => {
+        if (!userAddress) {
+          alert('Please connect to the wallet')
+          return
+        }
+
+        e.preventDefault()
+        submitBtn.innerText = 'Loading...'
+
+        const abi = await getABI()
+
+        const web3 = new Web3(window.ethereum)
+        const contract = new web3.eth.Contract(abi, contractAddress)
+
+        console.log(contract)
+        console.log(userAddress)
+
+        const form = new FormData(e.target)
+        const { greet } = Object.fromEntries(form.entries())
+
+        const txHash = contract.methods
+          .setGreeting(greet)
+          .send({ from: userAddress })
+          .on('receipt', (data) => {
+            submitBtn.innerText = 'Edit'
+            fetchData()
+            console.log(data)
+          })
+      })
+    </script>
+  </body>
+</html>

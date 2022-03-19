@@ -30,3 +30,7 @@ form {
 [type='submit'] {
   padding: 0.2em;
 }
+
+fieldset {
+  margin: 1em 0;
+}

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Using Ethers</title>
+    <link rel="stylesheet" href="./../style.css" />
+  </head>
+  <body>
+    <div>
+      <button id="connect" onclick="connectWallet()">Connect</button>
+
+      <ul>
+        <li>Address: <span id="address"></span></li>
+        <li>Balance: Ξ <span id="balance"></span></li>
+      </ul>
+
+      <h2>Our special data from Contract</h2>
+
+      <fieldset>
+        <legend>Reading data from smart contract</legend>
+        <button onclick="fetchData()">Fetch Data</button>
+        <p>Greeting: <span id="response"></span></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Writing data to smart contract</legend>
+        <form id="form">
+          <label htmlFor="text"> <strong>Edit data</strong></label>
+          <input type="text" id="text" name="greet" required />
+          <button type="submit">Edit</button>
+        </form>
+      </fieldset>
+    </div>
+
+    <script
+      src="https://cdn.ethers.io/lib/ethers-5.6.umd.min.js"
+      type="text/javascript"
+    ></script>
+
+    <script>
+      const btnConnect = document.getElementById('connect'),
+        uiAddress = document.getElementById('address'),
+        uiBalance = document.getElementById('balance'),
+        response = document.getElementById('response'),
+        form = document.getElementById('form'),
+        submitBtn = document.querySelector('button[type]')
+
+      async function getABI() {
+        const data = await fetch('./../ABI/Greeter.json')
+        const { abi } = await data.json()
+        return abi
+      }
+
+      let userAddress
+      const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3' // we'll get it while deploying the smart contract
+
+      async function connectWallet() {
+        const provider = new ethers.providers.Web3Provider(window.ethereum)
+        await provider.send('eth_requestAccounts', [])
+        const signer = provider.getSigner()
+
+        const address = await signer.getAddress(),
+          balance = await provider.getBalance(address),
+          formattedBalance = ethers.utils.formatEther(balance)
+
+        uiAddress.innerText = address
+        userAddress = address
+        uiBalance.innerText = formattedBalance
+        btnConnect.innerText = 'Connected'
+      }
+
+      async function fetchData() {
+        const provider = new ethers.providers.Web3Provider(window.ethereum)
+        const abi = await getABI()
+
+        const contract = new ethers.Contract(contractAddress, abi, provider)
+
+        const res = await contract.greeting()
+        response.innerText = res
+      }
+
+      form.addEventListener('submit', async (e) => {
+        if (!userAddress) {
+          alert('Please connect to the wallet')
+          return
+        }
+
+        e.preventDefault()
+        submitBtn.innerText = 'Loading...'
+
+        const abi = await getABI()
+
+        const provider = new ethers.providers.Web3Provider(window.ethereum)
+        const signer = provider.getSigner()
+        const contract = new ethers.Contract(contractAddress, abi, signer)
+
+        const form = new FormData(e.target)
+        const { greet } = Object.fromEntries(form.entries())
+
+        const transaction = await contract.setGreeting(greet)
+        await transaction.wait()
+        submitBtn.innerText = 'Edit'
+        fetchData()
+        console.log('transaction', transaction)
+      })
+    </script>
+  </body>
+</html>
